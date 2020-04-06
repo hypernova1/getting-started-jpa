@@ -1,6 +1,6 @@
 
 
-# 1강
+# JPA 들어가기
 
 ## ORM(Object Relational Mapping)
 
@@ -173,8 +173,7 @@ UPDATE MEMBER SET ...
 ### 표준
 
 
-# 2강
-## 실습
+# 실습
 ### 객체 매핑하기
 * `@Entity`: JPA가 관리할 객체
 
@@ -217,16 +216,18 @@ UPDATE MEMBER SET ...
 * JPA의 모든 데이터 변경은 트랜잭션 안에서 실행
 
 
-# 3강
-## 필드와 컬럼 매핑
-### 데이터베이스 스키마 자동 생성하기
+# 필드와 컬럼 매핑
+
+
+## 데이터베이스 스키마 자동 생성하기
+
 * DDL을 애플리케이션 실행 시점에서 자동 생성
 * 테이블 중심 -> 객체 중심
 * 데이터베이스 방언을 활용해서 데이터베이스에 맞는 적절한 DDL 생성
 * 이렇게 생성된 DDL은 **개발장비에서만 사용**
 * 생성된 DDL은 운영서버에서는 사용하지 않거나, 적절히 다듬은 후 사용
 
-### 데이터베이스 스키마 자동 생성하기
+## 데이터베이스 스키마 자동 생성하기
 * `hibernate.hbm2ddl.auto`
     * `create`: 기존 테이블 삭제후 다시 생성
     * `create-drop`: create와 같으나 종료시점에 DROP
@@ -234,7 +235,7 @@ UPDATE MEMBER SET ...
     * `validate`: 엔티티와 테이블이 정상 매핑되었는지만 확인
     * `none`: 사용하지 않음
     
-### 매핑 어노테이션
+## 매핑 어노테이션
 * `@Column`
   * 가장 많이 사용됨
   * `name`: 필드와 매핑할 테이블의 컬럼 이름
@@ -258,9 +259,9 @@ UPDATE MEMBER SET ...
 
 
 
-### 식별자 매핑
+## 식별자 매핑
 
-#### 식별자 매핑 방법
+### 식별자 매핑 방법
 
 * `@Id`(직접 매핑)
 * IDENTITY: 데이터베이스에 위임, MySQL
@@ -270,10 +271,180 @@ UPDATE MEMBER SET ...
   * `@TableGenerator` 필요
 * AUTO: 방언에 따라 자동 지정, 기본 값
 
-#### 권장하는 식별자 전략
+### 권장하는 식별자 전략
 
 * 기본 키 제약 조건: null 아님, 유일, **불변**
 * 미래까지 이 조건을 만족하는 자연키는 찾기 어렵다. *대리키(대체키)를 사용하자*
   * 예를 들어 주민등록번호는 기본 키로 적절하지 않다
 * **권장: Long + 대체키 + 키 생성 전략 사용**
+
+
+
+# 연관관계 매핑
+
+## 객체를 테이블에 맞추어 모델링
+
+* 참조 대신에 외래키를 그대로 사용
+
+* ~~~java
+  // 팀저장
+  Team team = new Team();
+  team.setName("TeamA");
+  em.persist(team);
+  
+  // 회원 저장
+  Member member = new Member();
+  mebmer.setName("member1");
+  member.setTeamId(team.getId);
+  em.persist(member);
+  
+  // 조회
+  Member findMember = em.find(Member.class, member.getId());
+  Long teamId = findMember.getTeamId();
+  
+  // 연관관계가 없음
+  Team findTeam = em.find(Team.class, teamId);
+  ~~~
+
+* 객체지향적인 방법이 아님
+
+* 객체를 테이블에 맞추어 데이터 중심으로 모델링하면, **협력 관계를 만들 수 없다.**
+
+  * **테이블은 외래키로 조인**을 사용해서 연관된 테이블을 찾는다.
+  * **객체는 참조**를 사용해서 연관된 객체를 찾는다.
+  * 테이블과 객체 사이에는 위와 같은 큰 차이가 있다.
+
+## 연관관계 매핑 이론
+
+### 단방향 매핑
+
+* ~~~java
+  //팀저장
+  Team team = new Team();
+  team.setName("TeamA");
+  em.persist(team);
+  
+  //회원저장
+  Member member = new Member();
+  member.setName("member1");
+  member.setTeam(team); //단방향 연관관계 설정, 참조 저장
+  em.persist(member);
+  
+  //조회
+  Member findMember = em.find(Member.class, member.getId());
+  
+  // 참조를 사용해서 연관관계 조회
+  Team findTeam = member.getTeam();
+  ~~~
+
+* 객체는 참조를 사용해서 연관관계를 조회할 수 있다. 이 것을 객체 그래프 탐색이라 한다.
+
+
+
+### 양방향 매핑
+
+~~~java
+Team findTeam = em.find(Team.class, team.getId());
+
+int memberSize = findTeam.getMembers().size(); //역방향 조회
+~~~
+
+* 반대 방향으로 객체 그래프 탐색
+
+* 객체와 테이블이 관계를 맺는 차이
+
+  * **객체 연관관계**
+    * 회원 -> 팀 연관관계 1개 (단방향)
+    * 팀 -> 회원 연관관계 1개 (단방향)
+  * **테이블 연관관계**
+    * 회원 <-> 팀 연관괸계 1개 (양방향)
+
+* 객체의 양방향 연관관계
+
+  * 객체의 양방향 관계는 사실 **양방향 관계가 아니라 서로 다른 단방향 관계 2개다.**
+
+* 테이블의 양방향 연관관계
+
+  * 테이블은 **외래키 하나**로 두 테이블의 연관관계를 관리
+
+  * MEMBER.TEAM_ID 외래키 하나로 양방향 연관관계를 가짐 (양쪽으로 조인 가능)
+
+  * ~~~mysql
+    SELECT *
+    FROM MEMBER M
+    JOIN TEAM T
+    ON M.TEAM_ID = T.TEAM_ID
+    
+    SELECT *
+    FROM TEAM T
+    JOIN MEMBER M
+    ON T.TEAM_ID = M.TEAM_ID
+    ~~~
+
+* **연관관계의 주인** (Owner)
+
+  * **양방향 매핑 규칙**
+    * 객체의 두 관계 중 하나를 연관관계의 주인으로 지정
+    * **연관관계의 주인만이 외래 키를 관리** (등록, 수정)
+    * **주인이 아닌 쪽은 읽기만 가능**
+    * 주인은 `mappedBy` 속성 사용 X
+    * 주인이 아니면 `mappedBy` 속성으로 주인 지정
+  * 누구를 주인으로?
+    * 외래 키가 있는 곳을 주인으로 정해라
+
+* 양방향 매핑시 가장 많이 하는 실수 
+
+  * 연관 관계의 주인에 값을 입력하지 않음
+
+  * ~~~java
+    Team team = new Team();
+    team.setName("TeamA");
+    em.persist(team);
+    
+    Member member = new Member();
+    member.setName("member1");
+    
+    //역방향(주인이 아닌 방향)만 연관관계 설정
+    team.getMembers().add(member);
+    em.persist
+    ~~~
+
+    * |  ID  | USERNAME | TEAM_ID  |
+      | :--: | :------: | :------: |
+      |  1   | member1  | **null** |
+
+  * 해결 방법
+
+    * 순수한 객체 관계를 고려하면 항상 **양쪽 다 값을 입력해야함**
+
+* 양방향 매핑의 장점
+
+  * **단방향 매핑만으로도 이미 연관관계 매핑은 완료**
+  * 양방향 매핑은 반대방향으로 조회(객체 그래프 탐색) 기능이 추가된 것 뿐
+  * JPQL에서 역방향으로 탐색할 일이 많음
+  * 단방향 매핑을 잘 하고 양방향 매핑은 필요할 때 추가해도됨 (테이블에 영향을 주지 않음)
+
+
+
+### 연관관계 매핑 어노테이션
+
+* 다대일: `@ManyToOne`
+* 일대다: `@OneToMay`
+* 일대일: `@OneToOne`
+* 다대다: `@ManyToMany`
+* `@JoinColumn`, `@JoinTable`
+
+### 상속 관계 매핑 어노테이션
+
+* `@Inheritance`
+* `@DiscriminatorColumn`
+* `@DiscrimiatorValue`
+* `@MappedSuperClass` (매핑 속성만 상속)
+
+### 복합치 어노테이션
+
+* `@IdClass`
+* `@EmbeddedId`
+* `@Embeddable`
+* `@MapsId`
 

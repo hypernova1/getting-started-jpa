@@ -1,5 +1,7 @@
 package hellojpa.entity;
 
+import org.hibernate.annotations.Fetch;
+
 import javax.persistence.*;
 
 @Entity
@@ -11,9 +13,15 @@ public class Member {
 
     @Column(name = "username", nullable = false, length = 20)
     private String name;
+
     private int age;
+
     @Enumerated(EnumType.STRING)
     private MemberType memberType;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id")
+    private Team team;
 
     public Long getId() {
         return id;
@@ -45,5 +53,13 @@ public class Member {
 
     public void setMemberType(MemberType memberType) {
         this.memberType = memberType;
+    }
+
+    public Team getTeam() {
+        return team;
+    }
+
+    public void setTeam(Team team) {
+        this.team = team;
     }
 }
