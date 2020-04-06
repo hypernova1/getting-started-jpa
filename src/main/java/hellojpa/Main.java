@@ -8,6 +8,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Persistence;
+import java.util.List;
 
 public class Main {
 
@@ -50,6 +51,12 @@ public class Main {
             em.persist(team2);
 
             member.setTeam(team2); // 수정
+
+            String jpql = "SELECT m FROM Member m JOIN FETCH m.team WHERE m.name LIKE '%melchor%'";
+            List<Member> result = em.createQuery(jpql, Member.class)
+                    .setFirstResult(10)
+                    .setMaxResults(20)
+                    .getResultList();
 
             tx.commit(); // 커밋
 

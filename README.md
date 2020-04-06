@@ -3,6 +3,7 @@
 3. [필드와 컬럼매핑](#필드와-컬럼-매핑)
 4. [연관관계 매핑](#연관관계-매핑)
 5. [JPA 내부구조](#JPA-내부구조)
+6. [JPA와 객체지향 쿼리](#JPA와-객체지향-쿼리)
 
 # JPA 들어가기
 
@@ -68,14 +69,14 @@ UPDATE MEMBER SET ...
 
    - ~~~java
      class Member {
-       String id;			//MEMBER_ID
-       Long teamId;		//TEAM_ID (FK)
-       String username;//USERNAME
+       String id;	//MEMBER_ID
+       Long teamId;	//TEAM_ID (FK)
+       String username;	//USERNAME
      }
      
      class Team {
-       Long id;				//TEAM_ID (PK)
-       String name;		//NAME
+       Long id;	//TEAM_ID (PK)
+       String name;	//NAME
      }
      ~~~
 
@@ -648,3 +649,193 @@ int memberSize = findTeam.getMembers().size(); //역방향 조회
 * `@ManyToOne`, `@OneToOne`은 기본이 즉시 로딩
   * LAZY로 설정
 * `@OneToMany`, `ManyToMany`는 기본이 지연 로딩
+
+
+
+# JPA와 객체지향 쿼리
+
+## JPQL 소개
+
+### 가장 단순한 조회방법
+
+* `EntityManager.find()`
+* 객체 그래프 탐색 (`a.getB().getC()`)
+* 나이가 18살 이상인 회원을 모두 검색하고 싶다면?
+  * 문제는 검색 쿼리
+  * 모든 DB 데이터를 객체로 변환해서 검색하는 것은 불가능
+  * 애플리케이션이 필요한 데이터만 DB에서 불러오려면 결국 검색 조건이 포함된 SQL이 필요
+
+
+
+### JPQL
+
+* 객체지향 SQL
+
+* SQL을 추상화해서 특정 데이터베이스 SQL에 의존하지 않음
+
+* 검색을 할 때도 테이블이 아닌 엔티티 객체를 대상으로 검색
+
+* SQL과 문법 유사, SELECT, FROM, WHERE, GROUP BY, HAVING, JOIN 지원
+
+* ~~~java
+  //검색
+  String jpql = "SELECT m FROM Member m WHERE m.name like '%hello%'";
+  List<Member> result = em.createQuery(jpql, Member.class).getResultList();
+  ~~~
+
+
+
+### JPQL 문법
+
+* `SELECT m FROM Member m WHERE m.age > 18`
+* 엔티티와 속성은 대소문자 구분(Member, username)
+* JPQL 키워드는 대소문자 구분 안 함(SELECT, FROM ,WHERE)
+* 엔티티 이름을 사용(테이블이름이 아님)
+* 별칭은 필수(m)
+
+### 결과 조회 API
+
+* `query.getResultList()`
+  * 결과가 하나 이상
+  * 리스트 반환
+* `query.getSingleResult()`
+  * 결과가 정확히 하나
+  * 단일 객체 반환
+  * 하나가 아니면 예외 발생
+
+### 파라미터 바인딩 - 이름 기준, 위치 기준
+
+~~~java
+SELECT m FROM Member m WHERE m.username=:username
+query.setParameter("username", usernameParam);
+
+SELECT m FROM Member m WHERE m.username=:?1
+query.setParameter(1, usernameParam);
+~~~
+
+
+
+### 프로젝션
+
+* `SELECT m FROM Member m`: 엔티티 프로젝션
+* `SELECT m.team FROM Member m`: 엔티티 프로젝션
+* `SELECT username, age FROM Member m`: 단순 값 프로젝션
+* `SELECT new jpabook.jpql.UserDTO(m.username, m.age) FROM Member m`:  `new` 명령어 (단순 값을 DTO로 바로 조회)
+* DISTINCT는 중복 제거
+
+
+
+### 페이징 API
+
+* JPA는 페이징을 다음 두 API로 추상화
+
+* `setFirstResult(int startPosition)`: 조회 시작 위치 (0부터 시작)
+
+* `setMaxResults(int maxResult)`: 조회할 데이터 수
+
+* ~~~java
+  String jpql = "SELECT m FROM Member m ORDER BY m.name DESC";
+  List<Member> resultList = em.createQuery(jpql, Member.class)
+    .setFistResult(10)
+    .setMaxResult(20)
+    .getResultList();
+  ~~~
+
+
+
+### 집합과 정렬
+
+* ~~~sql
+  SELECT
+  	COUNT(m),		//회원수
+  	SUM(m.age), //나이의 합
+  	AVG(m.age), //평균 나이
+  	MAX(m.age), //최대 나이
+  	MIN(m.age)  //최소 나이
+  FROM Member m
+  ~~~
+
+
+
+### 조인
+
+* ~~~sql
+  SELECT m FROM Member m [INNER] JOIN m.team t //내부조인
+  SELECT m FROM Member m LEFT [OUTER] JOIN m.team t //외부 조인
+  SELECT count(m) FROM Member m, Team t WHERE m.username = t.name //세타조인
+  ~~~
+
+* 참고: 하이버네이트 5.1부터 세타 조인도 외부 조인 가능
+
+
+
+### 페치 조인
+
+* 엔티티 객체 그래프를 한 번에 조회하는 방법
+
+* 별칭 사용 불가
+
+* ~~~sql
+  SELECT m FROM Member m JOIN FETCH m.team //JPQL
+  
+  SELECT M.*, T.* FROM MEMBER T INNER JOIN JOIN TEAM T ON M.TEAM_ID = T.ID //SQL
+  ~~~
+
+  
+
+* ~~~java
+  String jpql = "SELECT m FROM Member m JOIN FETCH m.team";
+  List<Member> members = em.createQuery(jpql, Member.class)
+    .getResultList();
+  
+  for (Member member : members) {
+    //페치 조인으로 회원과 팀을 함께 조회해서 지연 로딩 발생 안 함
+    System.out.println("username = " + member.getUserName() + ", teamname = " + member.getTeam().name());
+  }
+  ~~~
+
+
+
+### JPQL 기타
+
+* 서브 쿼리 지원
+* EXISTS, IN
+* BETWEEN, LIKE, IS NULL
+
+### JPQL 기본 함수
+
+* CONCAT
+* SUBSTRING
+* TRIM
+* LOWER, UPPER
+* LENGTH
+* LOCATE
+* ABS, SQRT, MOD
+* SIZE, INDEX (JPA 용도)
+
+### Named 쿼리 - 정적 쿼리
+
+* 미리 정의해서 이름을 부여해두고 사용하는 JPQL
+
+* 어노테이션, XML에 정의
+
+* 애플리케이션 로딩 시점에서 초기화 후 재사용
+
+* **애플리케이션 로딩 시점에 쿼리를 검증**
+
+* ~~~java
+  @Entity
+  @NamedQuery(
+  	name = "Member.findByUsername",
+  	query = "SELECT m FROM Member m WHERE m.username = :username")
+  public class Member {
+    ...
+  }
+  
+  List<Member> resultList = em.createNamedQuery("Member.findByUsername", Member.class)
+    .setParameter("username", "회원1")
+    .getResultList();
+  ~~~
+
+
+
