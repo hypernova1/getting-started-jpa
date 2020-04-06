@@ -34,9 +34,11 @@ public class Main {
 
 
             em.flush(); // 디비에 쿼리를 보냄
-            em.clear(); // 캐시를 비움
+            em.clear(); // 영속성 컨텍스트의 캐시를 비움
 
             Member findMember = em.find(Member.class, member.getId());
+
+            findMember.setName("melchor");
 
             Team findTeam = findMember.getTeam();
 

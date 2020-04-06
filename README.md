@@ -1,12 +1,8 @@
-
-
 1. [JPA 들어가기](#JPA-들어가기)
-
 2. [실습](#실습)
-
 3. [필드와 컬럼매핑](#필드와-컬럼-매핑)
-
 4. [연관관계 매핑](#연관관계-매핑)
+5. [JPA 내부구조](#JPA-내부구조)
 
 # JPA 들어가기
 
@@ -456,3 +452,199 @@ int memberSize = findTeam.getMembers().size(); //역방향 조회
 * `@Embeddable`
 * `@MapsId`
 
+
+
+# JPA 내부구조
+
+## 영속성 컨텍스트
+
+* JPA를 이해하는데 가장 중요한 용어
+* "*엔티티를 영구 저장하는 환경*"이라는 뜻
+* `EntityManager.persist(entity)`
+* 엔티티 매니저? 영속성 컨텍스트?
+  * 영속성 컨텍스트는 논리적인 개념
+  * 눈에 보이지 않는다
+  * 엔티티 매니저를 통해서 영속성 컨텍스트에 접근
+
+## 엔티티의 생명주기
+
+* 비영속 (new/transient)
+
+  * 영속성 컨텍스트와 전혀 관계가 없는 상태
+
+  * ~~~java
+    Member member = new Member();
+    member.setId("member1");
+    member.setUsername("회원");
+    ~~~
+
+* 영속 (managed)
+
+  * 영속성 컨텍스트에 저장된 상태
+
+  * ~~~java
+    EntityManager em = emf.createEntityManager();
+    em.getTransaction().begin();
+    
+    //객체를 저장한 상태(영속)
+    em.persist(member);
+    ~~~
+
+* 준영속 (detached)
+
+  * 영속성 컨텍스트에 저장되어 있다가 분리된 상태
+
+  * ~~~java
+    em.detach(member);
+    ~~~
+
+* 삭제 (removed)
+
+  * 삭제된 상태
+
+  * ~~~java
+    em.remove(member);
+    ~~~
+
+
+
+## 영속성 컨텍스트의 이점
+
+* 1차 캐시
+
+  * ~~~java
+    Member member = new Member();
+    member.setId("member1");
+    member.setUsername("회원1");
+    
+    //1차 캐시에 저장됨
+    em.persist(member);
+    
+    //1차 캐시에서 조회
+    Member findMember = em.find(Member.class, "member1");
+    
+    //1차 캐시에 없으므로 DB에서 조회 > 1차 캐시에 저장 > 반환
+    Member findMember2 = em.find(Member.class, "member2");
+    ~~~
+
+* 동일성(identity) 보장
+
+  * ~~~java
+    Member a = em.find(Member.class, "member1");
+    Member b = em.find(Member.class, "member2");
+    
+    System.out.println(a == b); //true
+    ~~~
+
+  * 1차 캐시로 반복 가능한 읽기(Repeatable Read) 등급의 트랜잭션 격리 수준을 데이터베이스가 아닌 애플리케이션 차원에서 제공
+
+* 트랜잭션을 지원하는 쓰기 지연(transactional write-behind)
+
+  * ~~~java
+    EntityManager em = emf.createEntityManager();
+    EntityTransaction transaction = em.getTransaction();
+    //엔티티 매니저는 데이터 변경시 트랜잭션을 시작해야 한다.
+    transaction.begin();
+    
+    em.persist(memberA);
+    em.persist(memberB);
+    //여기까지 INSERT SQL을 데이터베이스에 보내지 않는다
+    
+    //커밋하는 순간 데이터베이스에 INSERT SQL을 보낸다
+    transaction.commit();
+    ~~~
+
+* 변경감지(Dirty Checking)
+
+  * ~~~java
+    EntityManager em = emf.createEntityManager();
+    EntityTransaction transaction = em.getTransaction();
+    transaction.begin(); //트랜잭션 시작
+    
+    //영속 엔티티 조회
+    Member memberA = em.find(Member.class, "memberA");
+    
+    //영속 엔티티 수정
+    memberA.setUsername("sam");
+    memberA.setAge(31);
+    
+    transaction.commit(); //커밋
+    ~~~
+
+  * 1차 캐시가 생성되는 순간 스냅샷을 만들어두고 변경점이 있다면 UPDATE SQL을 데이터베이스에 보냄
+
+* 지연로딩(Lazy Loading)
+
+
+
+### 플러시 발생
+
+* 변경 감지
+* 수정된 엔티티 쓰기 지연 SQL 저장소에 등록
+* 쓰기 지연 SQL 저장소의 쿼리를 데이터베이승에 전송(등록, 수정, 삭제)
+
+### 영속성 컨텍스트를 플러시하는 방법
+
+* `em.flush()`: 직접 호출
+
+* 트랜잭션 커밋: 플러시 자동 호출
+
+* JPQL 쿼리 실행: 플러시 자동 호출
+
+  * ~~~java
+    em.persist(memberA);
+    em.persist(memberB);
+    em.persist(memberC);
+    
+    //중간에 JPQL 실행
+    query = em.creatQuery("SELECT m FROM Member m" ,Member.class);
+    List<Member> members = query.getResultList();
+    ~~~
+
+### 플러시 주의할 점
+
+* 영속성 컨텍스트를 비우지 않음
+* 영속성 컨텍스트의 변경내용을 데이터베이스에 동기화
+* 트랜잭션이라는 작업 단위가 중요 -> 커밋 직전에만 동기화
+
+
+
+### 준영속 상태
+
+* 영속 -> 준영속
+* 영속 상태의 엔티티가 영속성 컨텍스트에서 분리
+* 영속성 컨텍스트가 제공하는 기능을 사용하지 못함
+* 준영속 상태로 만드는 법
+  * `em.detach(entity)`: 특정 엔티티만 준영속 상태로 전환
+  * `em.clear()`: 영속성 컨텍스트를 완전히 초기화
+  * `em.close`: 영속성 컨텍스트 종료
+
+
+
+### Member를 조회할 때 Team도 함께 조회해야 할까?
+
+* 단순히 Member만 조회하는 비즈니스 로직 `member.getName()`
+
+  * 지연 로딩 LAZY를 사용해서 프록시로 조회
+
+  * ~~~java
+    Member member = em.find(Member.class, 1L); //여기서 Team은 프록시 객체(가짜 객체)로 저장된다.
+    Team team = member.getTeam();
+    team.getName(); //실제 team을 사용하는 시점에서 초기화(DB조회)
+    ~~~
+
+* Member와 Team을 자주 함께 사용한다면
+
+  * 즉시로딩 EAGLE을 사용해서 함께 조회
+  * JPA 구현체는 가능하면 조인을 사용해서 SQL 한 번에 함께 조회
+
+
+
+### 프록시와 즉시 로딩 주의
+
+* **가급적 지연로딩을 사용**
+* 즉시 로딩을 적용하면 예상하지 못한 SQL이 발생
+* 즉시 로딩은 JPQL에서 N+1 문제를 일으킨다.
+* `@ManyToOne`, `@OneToOne`은 기본이 즉시 로딩
+  * LAZY로 설정
+* `@OneToMany`, `ManyToMany`는 기본이 지연 로딩
