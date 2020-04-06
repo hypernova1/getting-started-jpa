@@ -4,6 +4,7 @@
 4. [연관관계 매핑](#연관관계-매핑)
 5. [JPA 내부구조](#JPA-내부구조)
 6. [JPA와 객체지향 쿼리](#JPA와-객체지향-쿼리)
+7. [JPA 기반 프로젝트](#JPA-기반-프로젝트)
 
 # JPA 들어가기
 
@@ -839,3 +840,47 @@ query.setParameter(1, usernameParam);
 
 
 
+# JPA 기반 프로젝트
+
+## Spring Data JPA
+
+* 지루하게 반복되는 CRUD 문제를 세련된 방법으로 해결
+* 개발자는 인터페이스만 작성
+* 스프링 데이터 JPA가 구현 객체를 동적으로 생성해서 주입
+* 메서드 이름만으로 JPQL 쿼리 생성
+
+## QueryDSL
+
+* SQL, JPQL을 코드로 작성할 수 있도록 도와주는 빌더 API
+* JPA 크리테리아에 비해서 편하고 실용적
+* 오픈소스
+
+### SQL, JPQL의 문제점
+
+* 문자라서 Type-check 불가능
+* 해당 로직 실행 전까지 작동여부 확인 불가
+
+### QueryDSL의 장점
+
+* 문자가 아닌 **코드**로 작성
+
+* **컴파일 시점에 문법 오류 발견**
+
+* 코드 자동완성 (IDE 도움)
+
+* 단순하고 쉬움: 코드 모양이 JPQL과 거의 비슷
+
+* 동적 쿼리
+
+* ~~~java
+  //JPQL
+  //SELECT m FROM Member m WHERE m.age > 18
+  
+  JPAFactoryQuery query = new JPAQueryFactory(em);
+  QMember m = QMember.member;
+  List<Member> list =
+    	query.selectFrom(m)
+    			 .where(m.age.gt(18))
+    			 .orderBy(m.name.desc())
+    			 .fetch();
+  ~~~
