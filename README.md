@@ -10,7 +10,7 @@
 
 ## ORM(Object Relational Mapping)
 
-* 객체는 객체재로, 데이터베이스는 데이터베이스대로 설계
+* 객체는 객체대로, 데이터베이스는 데이터베이스대로 설계
 * ORM 프레임워크가 중간에서 설계
 * 대중 적인 언어에는 대부분 ORM 기술이 존재
 
@@ -102,7 +102,7 @@ UPDATE MEMBER SET ...
 
 6. 모든 객체를 미리 로딩할 수는 없다.
 
-   * 상황에 따라 동일한 회원 조회 메서드를 여러벌 생성
+   * 상황에 따라 동일한 회원 조회 메서드를 여러번 생성
 
      * ~~~java
        memberDao.getMember(); //Member만 조회
@@ -121,7 +121,7 @@ UPDATE MEMBER SET ...
      Member member1 = memberDao.getMamber(memberId);
      Member member2 = memberDao.getMamber(memberId);
      
-     member1 == member2; //다름
+     member1 == member2; //false
      ~~~
 
    * 자바 컬렉션에서 조회
@@ -131,7 +131,7 @@ UPDATE MEMBER SET ...
      Member member1 = list.get(memberId);
      Member member2 = list.get(memberId);
      
-     member1 == member2; //같다
+     member1 == member2; //true
      ~~~
 
 ##### 데이터 타입
@@ -146,10 +146,10 @@ UPDATE MEMBER SET ...
 
 ### 생산성
 
-* 저장: **jpa.persist(member)**
-* 조회: **Member member = jpa.find(memberId)**
-* 수정: **mebmer.setName("변경할 이름")**
-* 삭제: **jpa.remove(member)**
+* 저장: `jpa.persist(member)`
+* 조회: `Member member = jpa.find(memberId)`
+* 수정: `mebmer.setName("변경할 이름")`
+* 삭제: `jpa.remove(member)`
 
 ### 유지보수
 
